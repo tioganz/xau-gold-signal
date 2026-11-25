@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827"><title>XAU GOLD SIGNAL</title>
+<link rel="manifest" href="/manifest.json">
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#131e30;--muted:#9aabc2;--line:#26354b;--green:#21c58b;--red:#ff6577;--gold:#f4c45e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#edf3fb;font:15px system-ui,Arial}
+main{max-width:760px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+h1{font-size:22px;margin:0}.sub,.muted{color:var(--muted);font-size:13px}
+.pill{border:1px solid var(--line);border-radius:30px;padding:7px 11px;font-size:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:12px}
+.signal{font-size:30px;font-weight:800;margin:8px 0}.buy{color:var(--green)}.sell{color:var(--red)}.wait{color:var(--gold)}
+.label{color:var(--muted);font-size:12px}.value{font-size:18px;font-weight:650;margin-top:5px}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:15px}
+button{background:#23344d;color:white;border:1px solid #3a506d;border-radius:11px;padding:11px 14px;font-weight:650}
+button.primary{background:#b88727;color:#101827;border:0}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.status{display:inline-block;width:8px;height:8px;border-radius:50%;background:#f4c45e;margin-right:6px}
+footer{margin:20px 2px;color:var(--muted);font-size:12px;line-height:1.5}
+@media(max-width:420px){main{padding:14px}.grid{gap:8px}.card{padding:13px}}
+</style></head>
+<body><main>
+<div class="top"><div><h1>🥇 XAU GOLD SIGNAL</h1><div class="sub">HFM · XAUUSD · M5 · Risiko 1%</div></div><span class="pill" id="connection"><span class="status"></span>Menunggu MT5</span></div>
+<div class="grid">
+ <section class="card"><div class="label">SINYAL TERBARU</div><div id="signal" class="signal wait">MENUNGGU</div><div class="muted" id="reason">Belum menerima data dari MT5</div></section>
+ <section class="card"><div class="label">HARGA TERAKHIR</div><div class="value" id="price">—</div><div class="muted" id="updated">Belum ada update</div></section>
+</div>
+<section class="card"><b>Rencana trading</b><div class="metrics">
+ <div><div class="label">Entry</div><div class="value" id="entry">—</div></div>
+ <div><div class="label">Stop Loss</div><div class="value" id="sl">—</div></div>
+ <div><div class="label">Take Profit</div><div class="value" id="tp">—</div></div>
+ <div><div class="label">Risiko akun</div><div class="value">1%</div></div>
+ <div><div class="label">RSI (14)</div><div class="value" id="rsi">—</div></div>
+ <div><div class="label">EMA 9 / EMA 21</div><div class="value" id="ema">—</div></div>
+</div><div class="muted" style="margin-top:12px" id="risknote">Lot belum dihitung. Perhitungan lot perlu data spesifikasi kontrak dan equity dari akun MT5.</div></section>
+<section class="card"><b>Notifikasi</b><div class="muted" style="margin-top:5px">Aktifkan izin notifikasi browser. Notifikasi muncul saat dashboard terbuka; notifikasi latar belakang memerlukan HTTPS, service worker, dan konfigurasi push server.</div><div class="actions"><button class="primary" id="enable">Aktifkan notifikasi</button><button id="refresh">Perbarui data</button></div><div class="muted" id="notifyState" style="margin-top:9px">Status izin: belum diperiksa</div></section>
+<section class="card"><b>Riwayat sinyal</b><div id="history" class="muted" style="margin-top:8px">Belum ada sinyal.</div></section>
+<footer>Dashboard ini tidak membuat harga atau sinyal palsu. Sinyal hanya tampil setelah menerima data dari EA MT5. Indikator otomatis: EMA 9/21 + RSI 14 + konfirmasi candle M5. Sinyal bukan jaminan profit; cek spread, volatilitas, dan kalender berita sebelum transaksi. Jangan menganggap tampilan ini sebagai rekomendasi investasi.</footer>
+</main>
+<script>
+let lastSignal="", historyItems=[];
+const $=id=>document.getElementById(id);
+async function update(){
+ try{
+  const r=await fetch('/api/state',{cache:'no-store'}); if(!r.ok) throw Error('API belum siap');
+  const d=await r.json();
+  $('connection').innerHTML='<span class="status" style="background:#21c58b"></span>MT5 terhubung';
+  $('price').textContent=d.price??'—'; $('updated').textContent=d.updated_at?'Update: '+d.updated_at:'';
+  const s=d.signal||'WAIT'; $('signal').textContent=s; $('signal').className='signal '+(s==='BUY'?'buy':s==='SELL'?'sell':'wait');
+  $('reason').textContent=d.reason||'Menunggu kondisi strategi';
+  $('entry').textContent=d.entry??'—'; $('sl').textContent=d.sl??'—'; $('tp').textContent=d.tp??'—';
+  $('rsi').textContent=d.rsi??'—'; $('ema').textContent=d.ema9&&d.ema21?`${d.ema9} / ${d.ema21}`:'—';
+  $('risknote').textContent=d.lot?'Estimasi lot: '+d.lot+' · Risiko maksimum target 1% (validasi di MT5 sebelum order).':'Lot belum dihitung; cek spesifikasi kontrak akun HFM.';
+  if((s==='BUY'||s==='SELL') && d.bar_time && s!==lastSignal){
+    historyItems.unshift(`${d.bar_time} — ${s} · Entry ${d.entry??'—'}`); historyItems=historyItems.slice(0,8);
+    $('history').innerHTML=historyItems.map(x=>'<div style="padding:6px 0;border-bottom:1px solid #26354b">'+x+'</div>').join('');
+    if(Notification.permission==='granted') new Notification('XAU GOLD SIGNAL: '+s,{body:'Entry '+(d.entry??'—')+' | SL '+(d.sl??'—')+' | TP '+(d.tp??'—')});
+  }
+  lastSignal=s;
+ }catch(e){$('connection').innerHTML='<span class="status"></span>Menunggu MT5';$('reason').textContent='Belum terhubung ke server MT5. '+e.message;}
+}
+$('enable').onclick=async()=>{if(!('Notification'in window)){ $('notifyState').textContent='Browser tidak mendukung notifikasi.';return;}let p=await Notification.requestPermission();$('notifyState').textContent='Status izin: '+p;};
+$('refresh').onclick=update; update(); setInterval(update,5000);
+if('serviceWorker'in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+</script></body></html>
